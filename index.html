@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Metro Manila Jeepney Fare Calculator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Jeepney drawing, defined once and reused with <use> -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="jeep" viewBox="0 0 120 60">
+      <rect x="4" y="12" width="98" height="32" rx="9" fill="#FFC72C" stroke="#111" stroke-width="3"/>
+      <rect x="98" y="24" width="18" height="20" rx="5" fill="#FFC72C" stroke="#111" stroke-width="3"/>
+      <rect x="14" y="19" width="14" height="12" rx="2" fill="#fff" stroke="#111" stroke-width="2"/>
+      <rect x="34" y="19" width="14" height="12" rx="2" fill="#fff" stroke="#111" stroke-width="2"/>
+      <rect x="54" y="19" width="14" height="12" rx="2" fill="#fff" stroke="#111" stroke-width="2"/>
+      <rect x="74" y="19" width="14" height="12" rx="2" fill="#fff" stroke="#111" stroke-width="2"/>
+      <rect x="4" y="35" width="98" height="5" fill="#111"/>
+      <rect x="12" y="6" width="80" height="5" rx="2" fill="#111"/>
+      <circle cx="28" cy="46" r="9" fill="#111"/><circle cx="28" cy="46" r="3.5" fill="#fff"/>
+      <circle cx="88" cy="46" r="9" fill="#111"/><circle cx="88" cy="46" r="3.5" fill="#fff"/>
+    </symbol>
+  </svg>
+
+  <!-- Navigation bar -->
+  <header class="navbar no-print">
+    <div class="brand">
+      <svg viewBox="0 0 120 60"><use href="#jeep"/></svg>
+      <span>PUJ Fare Calculator</span>
+    </div>
+    <button class="menu-btn" id="menuBtn" aria-label="Toggle menu">☰</button>
+    <nav class="nav-links" id="navLinks">
+      <button class="nav-btn" data-target="home">🏠 Home</button>
+      <button class="nav-btn" data-target="driver">🛠 Driver</button>
+      <button class="nav-btn" data-target="calculator">🧮 Passenger Fare</button>
+      <button class="nav-btn" data-target="receipt">🧾 Receipt</button>
+      <button class="nav-btn" data-target="history">📋 History</button>
+    </nav>
+  </header>
+
+  <main>
+
+    <!-- 1. HOME / DASHBOARD -->
+    <section class="page" id="home">
+      <div class="hero">
+        <div class="hero-text">
+          <h1>Know your jeepney fare before you ride.</h1>
+          <p>Welcome! Choose a jeepney route, pick where you board and where you get off, and get the estimated fare with student, senior citizen, and PWD discounts. Drivers set their route once in the Driver Dashboard.</p>
+          <div class="btn-row"><button class="btn btn-dark" data-target="calculator">Start Calculating</button><button class="btn btn-outline" data-target="driver">Driver Dashboard</button></div>
+        </div>
+        <svg class="hero-jeep" viewBox="0 0 120 60"><use href="#jeep"/></svg>
+        <div class="road"></div>
+      </div>
+      <div class="stats">
+        <div class="card stat"><span class="stat-num" id="statCount">0</span><span>Total transactions</span></div>
+        <div class="card stat"><span class="stat-num" id="statTotal">₱0.00</span><span>Total fares calculated</span></div>
+        <div class="card stat"><span class="stat-num small" id="statRoute">None</span><span>Active jeepney route</span></div>
+      </div>
+    </section>
+
+    <!-- 2. DRIVER DASHBOARD -->
+    <section class="page" id="driver">
+      <h2>Driver Dashboard</h2>
+      <p class="note">Set your route once and passengers will use it automatically. Demo only: there is no login, no GPS, and no live tracking.</p>
+      <div class="card">
+        <div class="two-col">
+          <label>Jeepney route
+            <select id="routeSelect"></select>
+          </label>
+          <label>Jeepney type
+            <select id="jeepType">
+              <option value="traditional">Traditional jeepney</option>
+              <option value="modern">Modern jeepney</option>
+            </select>
+          </label>
+        </div>
+        <div id="routeInfo"></div>
+        <div class="btn-row">
+          <button class="btn btn-dark" id="setMyRouteBtn">Set as my active route</button>
+          <button class="btn btn-outline" id="toggleBtn">Deactivate route</button>
+        </div>
+      </div>
+      <div id="driverMsg" class="msg hidden" role="alert"></div>
+      <h3 class="section-sub">Route stops (in travel order)</h3>
+      <div class="card table-wrap">
+        <table class="stops-table">
+          <thead><tr><th>#</th><th>Stop name</th><th>km from previous stop</th><th>Move / remove</th></tr></thead>
+          <tbody id="stopsBody"></tbody>
+        </table>
+      </div>
+      <form class="card add-stop" id="addStopForm" novalidate>
+        <label>New stop name
+          <input type="text" id="newStopName" maxlength="40" placeholder="e.g. Pateros Church">
+        </label>
+        <label>km from previous stop
+          <input type="number" id="newStopGap" step="0.1" min="0" placeholder="e.g. 1.5">
+        </label>
+        <button type="submit" class="btn btn-yellow">Add stop to end</button>
+      </form>
+    </section>
+
+    <!-- 3. PASSENGER FARE CALCULATOR -->
+    <section class="page" id="calculator">
+      <h2>Passenger Fare Calculator</h2>
+      <p class="note" id="rateNote"></p>
+      <div class="calc-grid">
+        <form class="card" id="fareForm" novalidate>
+          <label>Jeepney route
+            <select id="routeChoice"></select>
+          </label>
+          <label>Boarding location
+            <select id="board"></select>
+          </label>
+          <label>Drop-off location
+            <select id="drop"></select>
+          </label>
+          <p class="distance-info" id="distanceInfo"></p>
+          <label>Passenger category
+            <select id="passType">
+              <option value="regular">Regular</option>
+              <option value="student">Student</option>
+              <option value="senior">Senior Citizen</option>
+              <option value="pwd">PWD</option>
+            </select>
+          </label>
+          <div id="formMsg" class="msg hidden" role="alert"></div>
+          <div class="btn-row">
+            <button type="submit" class="btn btn-dark">Calculate Fare</button>
+            <button type="button" class="btn btn-outline" id="clearBtn">Clear</button>
+          </div>
+        </form>
+
+        <div class="card hidden" id="breakdown">
+          <h3>Fare breakdown</h3>
+          <div id="breakdownRows"></div>
+          <button class="btn btn-yellow" data-target="receipt">View Receipt</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. RECEIPT -->
+
+    <section class="page" id="receipt">
+      <h2 class="no-print">Digital Receipt</h2>
+      <div id="receiptBox"></div>
+      <div class="btn-row center no-print">
+        <button class="btn btn-dark" id="printBtn">🖨 Print Receipt</button>
+      </div>
+    </section>
+
+    <!-- 4. TRANSACTION HISTORY -->
+    <section class="page" id="history">
+      <div class="history-head">
+        <h2>Transaction History</h2>
+        <button class="btn btn-outline" id="clearHistoryBtn">Clear History</button>
+      </div>
+      <div class="card table-wrap">
+        <table>
+          <thead>
+            <tr><th>Transaction No.</th><th>Route</th><th>Boarding → Drop-off</th><th>Passenger</th><th>Total Fare</th></tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+        <p class="empty hidden" id="historyEmpty">No transactions yet. Calculate a fare and it will appear here.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="no-print">Route data is unverified sample data. Routes and rates are configurable in script.js. Always check the latest LTFRB fare matrix.</footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
